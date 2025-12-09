@@ -22,7 +22,7 @@ io.on("connection", (socket) => {
   let currentRoom = null;
   let currentUser = null;
 
-  socket.on("join", ({ roomId, userName }) => {
+  socket.on("join", ({ roomId, userName, language}) => {
     if (currentRoom) {
       socket.leave(currentRoom);
       rooms.get(currentRoom).users.delete(currentUser);
@@ -38,12 +38,14 @@ io.on("connection", (socket) => {
     socket.join(roomId);
 
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { users: new Set(), code: "// start code here" });
+      rooms.set(roomId, { users: new Set(), code: "// start code here", roomLanguage: language });
     }
 
     rooms.get(roomId).users.add(userName);
 
     socket.emit("codeUpdate", rooms.get(roomId).code);
+
+    socket.emit("languageUpdate", rooms.get(roomId).roomLanguage);
 
     io.to(roomId).emit("userJoined", Array.from(rooms.get(currentRoom).users));
   });
@@ -75,6 +77,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("languageChange", ({ roomId, language }) => {
+    if(rooms.has(roomId)){
+      rooms.get(roomId).roomLanguage = language
+    }
     io.to(roomId).emit("languageUpdate", language);
   });
 
@@ -121,7 +126,7 @@ const __dirname = path.resolve();
 
 app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
-app.get("*", (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "dist", "index.html"));
 });
 
